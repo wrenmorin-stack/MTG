@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MTG Card Generator</title>
+  <style>
+    body {
+      background: linear-gradient(180deg, #061021, #081224);
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .controls, .color-row, .alt-art-row, .recent-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    input, select, button {
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #1e293b;
+      color: white;
+    }
+    .color-btn {
+      background: #0f1724;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .color-btn img { width: 24px; height: 24px; }
+    .random-btn {
+      background: #2563eb;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      cursor: pointer;
+      color: white;
+      margin-bottom: 20px;
+    }
+    .card-container {
+      width: 320px;
+      height: 448px;
+      margin: 0 auto;
+      perspective: 1000px;
+    }
+    .card-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+      transition: transform 0.6s ease;
+    }
+    .thumb {
+      width: 72px;
+      height: 100px;
+      border-radius: 6px;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <h1>MTG Card Generator</h1>
+  <div class="controls">
+    <input id="searchInput" type="text" placeholder="Search for a card..." />
+    <button id="searchButton">Search</button>
+    <select id="setFilter">
+      <option value="">All Sets</option>
+      <option value="eld">Throne of Eldraine</option>
+      <option value="khm">Kaldheim</option>
+      <option value="iko">Ikoria</option>
+      <option value="mom">March of the Machine</option>
+    </select>
+    <select id="typeFilter">
+      <option value="">All Types</option>
+      <option value="creature">Creature</option>
+      <option value="instant">Instant</option>
+      <option value="sorcery">Sorcery</option>
+      <option value="enchantment">Enchantment</option>
+      <option value="artifact">Artifact</option>
+      <option value="planeswalker">Planeswalker</option>
+      <option value="land">Land</option>
+    </select>
+    <select id="rarityFilter">
+      <option value="">All Rarities</option>
+      <option value="common">Common</option>
+      <option value="uncommon">Uncommon</option>
+      <option value="rare">Rare</option>
+      <option value="mythic">Mythic</option>
+    </select>
+  </div>
+  <div class="color-row" id="colorRow"></div>
+  <button class="random-btn" id="randomBtn">Random Card</button>
+  <div class="card-container" id="cardContainer">Loading...</div>
+  <div id="altArts"></div>
+  <div id="recent"></div>
+
+  <script>
+    const colors = [
+      { key: 'w', label: 'White', symbol: 'https://svgs.scryfall.io/card-symbols/W.svg' },
+      { key: 'u', label: 'Blue', symbol: 'https://svgs.scryfall.io/card-symbols/U.svg' },
+      { key: 'b', label: 'Black', symbol: 'https://svgs.scryfall.io/card-symbols/B.svg' },
+      { key: 'r', label: 'Red', symbol: 'https://svgs.scryfall.io/card-symbols/R.svg' },
+      { key: 'g', label: 'Green', symbol: 'https://svgs.scryfall.io/card-symbols/G.svg' },
+      { key: 'c', label: 'Colorless', symbol: 'https://svgs.scryfall.io/card-symbols/C.svg' }
+    ];
+
+    const cardContainer = document.getElementById('cardContainer');
+    const altArtsDiv = document.getElementById('altArts');
+    const recentDiv = document.getElementById('recent');
+    const colorRow = document.getElementById('colorRow');
+
+    colors.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'color-btn';
+      btn.innerHTML = `<img src="${c.symbol}" alt="${c.label}" />`;
+      btn.onclick = () => fetchRandom(c.key);
+      colorRow.appendChild(btn);
+    });
+
+    async function fetchCardById(id) {
+      const res = await fetch(`https://api.scryfall.com/cards/${id}`);
+      const data = await res.json();
+      displayCard(data);
+    }
+
+    async function fetchRandom(color) {
+      cardContainer.innerHTML = 'Loading...';
+      let url = 'https://api.scryfall.com/cards/random';
+      if (color) url += `?q=color:${color}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      displayCard(data);
+    }
+
+    async function searchCard() {
+      const query = document.getElementById('searchInput').value.trim();
+      const set = document.getElementById('setFilter').value;
+      const type = document.getElementById('typeFilter').value;
+      const rarity = document.getElementById('rarityFilter').value;
+      if (!query) return;
+      let q = query;
+      if (set) q += ` set:${set}`;
+      if (type) q += ` type:${type}`;
+      if (rarity) q += ` rarity:${rarity}`;
+      const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (data.data && data.data.length > 0) displayCard(data.data[0]);
+    }
+
+    async function displayCard(card) {
+      cardContainer.innerHTML = `<img src="${card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal}" alt="${card.name}" />`;
+      if (card.prints_search_uri) {
+        const prints = await fetch(card.prints_search_uri).then(r => r.json());
+        const arts = (prints.data || []).filter(p => p.image_uris);
+        altArtsDiv.innerHTML = '<h3>Alternate Arts</h3><div class="alt-art-row"></div>';
+        const row = altArtsDiv.querySelector('.alt-art-row');
+        arts.forEach(a => {
+          const img = document.createElement('img');
+          img.src = a.image_uris.small;
+          img.className = 'thumb';
+          img.onclick = () => fetchCardById(a.id);
+          row.appendChild(img);
+        });
+      }
+      updateRecent(card);
+    }
+
+    function updateRecent(card) {
+      const stored = JSON.parse(localStorage.getItem('recentCards') || '[]');
+      const newList = [card, ...stored.filter(c => c.id !== card.id)].slice(0, 10);
+      localStorage.setItem('recentCards', JSON.stringify(newList));
+      renderRecent(newList);
+    }
+
+    function renderRecent(list) {
+      recentDiv.innerHTML = '<h3>Recently Viewed</h3><div class="recent-row"></div>';
+      const row = recentDiv.querySelector('.recent-row');
+      list.forEach(r => {
+        const img = document.createElement('img');
+        img.src = r.image_uris?.small || r.card_faces?.[0]?.image_uris?.small;
+        img.className = 'thumb';
+        img.onclick = () => fetchCardById(r.id);
+        row.appendChild(img);
+      });
+    }
+
+    document.getElementById('searchButton').onclick = searchCard;
+    document.getElementById('randomBtn').onclick = () => fetchRandom();
+
+    fetchRandom();
+  </script>
+</body>
+</html>
