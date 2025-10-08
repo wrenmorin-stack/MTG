@@ -97,6 +97,19 @@
       <option value="rare">Rare</option>
       <option value="mythic">Mythic</option>
     </select>
+    <select id="creatureTypeFilter">
+      <option value="">All Creature Types</option>
+      <option value="angel">Angel</option>
+      <option value="zombie">Zombie</option>
+      <option value="goblin">Goblin</option>
+      <option value="elf">Elf</option>
+      <option value="human">Human</option>
+      <option value="dragon">Dragon</option>
+      <option value="merfolk">Merfolk</option>
+      <option value="vampire">Vampire</option>
+      <option value="wizard">Wizard</option>
+      <option value="soldier">Soldier</option>
+    </select>
   </div>
   <div class="color-row" id="colorRow"></div>
   <button class="random-btn" id="randomBtn">Random Card</button>
@@ -147,11 +160,13 @@
       const set = document.getElementById('setFilter').value;
       const type = document.getElementById('typeFilter').value;
       const rarity = document.getElementById('rarityFilter').value;
+      const creatureType = document.getElementById('creatureTypeFilter').value;
       if (!query) return;
       let q = query;
       if (set) q += ` set:${set}`;
       if (type) q += ` type:${type}`;
       if (rarity) q += ` rarity:${rarity}`;
+      if (creatureType) q += ` type:${creatureType}`;
       const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
       if (data.data && data.data.length > 0) displayCard(data.data[0]);
